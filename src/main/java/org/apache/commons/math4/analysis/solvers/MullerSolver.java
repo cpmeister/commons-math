@@ -140,67 +140,69 @@ public class MullerSolver extends AbstractUnivariateSolver {
         double y0 = fMin;
         double x2 = max;
         double y2 = fMax;
-        double x1 = 0.5 * (x0 + x2);
-        double y1 = computeObjectiveValue(x1);
-
-        double oldx = Double.POSITIVE_INFINITY;
         while (true) {
-            // Muller's method employs quadratic interpolation through
-            // x0, x1, x2 and x is the zero of the interpolating parabola.
-            // Due to bracketing condition, this parabola must have two
-            // real roots and we choose one in [x0, x2] to be x.
-            final double d01 = (y1 - y0) / (x1 - x0);
-            final double d12 = (y2 - y1) / (x2 - x1);
-            final double d012 = (d12 - d01) / (x2 - x0);
-            final double c1 = d01 + (x1 - x0) * d012;
-            final double delta = c1 * c1 - 4 * y1 * d012;
-            final double xplus = x1 + (-2.0 * y1) / (c1 + FastMath.sqrt(delta));
-            final double xminus = x1 + (-2.0 * y1) / (c1 - FastMath.sqrt(delta));
-            // xplus and xminus are two roots of parabola and at least
-            // one of them should lie in (x0, x2)
-            final double x = isSequence(x0, xplus, x2) ? xplus : xminus;
+            double x1 = 0.5 * (x0 + x2);
+            double y1 = computeObjectiveValue(x1);
+            
+            double oldx = Double.POSITIVE_INFINITY;
+            while (true) {
+                // Muller's method employs quadratic interpolation through
+                // x0, x1, x2 and x is the zero of the interpolating parabola.
+                // Due to bracketing condition, this parabola must have two
+                // real roots and we choose one in [x0, x2] to be x.
+                final double d01 = (y1 - y0) / (x1 - x0);
+                final double d12 = (y2 - y1) / (x2 - x1);
+                final double d012 = (d12 - d01) / (x2 - x0);
+                final double c1 = d01 + (x1 - x0) * d012;
+                final double deltaSqrt = FastMath.sqrt(c1 * c1 - 4 * y1 * d012);
+                final double xplus = x1 + (-2.0 * y1) / (c1 + deltaSqrt);
+                final double xminus = x1 + (-2.0 * y1) / (c1 - deltaSqrt);
+                // xplus and xminus are two roots of parabola and at least
+                // one of them should lie in (x0, x2), if not we fall back
+                // to using the bisection
+                final double x;
+                if(x0 <= xplus && xplus <= x2){
+                    x = xplus;
+                }else if(x0 <= xminus && xminus <= x2){
+                    x = xminus;
+                }else{
+                    break;
+                }
+                
+                final double y = computeObjectiveValue(x);
 
-            // XXX debug
-            if (!isSequence(x0, x, x2)) {
-                System.out.println("x=" + x + " x0=" + x0 + " x2=" + x2);
-                throw new org.apache.commons.math4.exception.MathInternalError();
-            }
+                // check for convergence
+                final double tolerance = FastMath.max(relativeAccuracy * FastMath.abs(x), absoluteAccuracy);
+                if (FastMath.abs(x - oldx) <= tolerance ||
+                    FastMath.abs(y) <= functionValueAccuracy) {
+                    return x;
+                }
 
-            final double y = computeObjectiveValue(x);
-
-            // check for convergence
-            final double tolerance = FastMath.max(relativeAccuracy * FastMath.abs(x), absoluteAccuracy);
-            if (FastMath.abs(x - oldx) <= tolerance ||
-                FastMath.abs(y) <= functionValueAccuracy) {
-                return x;
-            }
-
-            // Bisect if convergence is too slow. Bisection would waste
-            // our calculation of x, hopefully it won't happen often.
-            // the real number equality test x == x1 is intentional and
-            // completes the proximity tests above it
-            boolean bisect = (x < x1 && (x1 - x0) > 0.95 * (x2 - x0)) ||
-                             (x > x1 && (x2 - x1) > 0.95 * (x2 - x0)) ||
-                             (x == x1);
-            // prepare the new bracketing interval for next iteration
-            if (!bisect) {
+                // Bisect if convergence is too slow. Bisection would waste
+                // our calculation of x, hopefully it won't happen often.
+                // the real number equality test x == x1 is intentional and
+                // completes the proximity tests above it
+                boolean bisect = (x < x1 && (x1 - x0) > 0.95 * (x2 - x0)) ||
+                                 (x > x1 && (x2 - x1) > 0.95 * (x2 - x0)) ||
+                                 (x == x1);
+                // prepare the new bracketing interval for next iteration
+                if(bisect){
+                    break;
+                }
                 x0 = x < x1 ? x0 : x1;
                 y0 = x < x1 ? y0 : y1;
                 x2 = x > x1 ? x2 : x1;
                 y2 = x > x1 ? y2 : y1;
                 x1 = x; y1 = y;
                 oldx = x;
+            }
+            // perform bisection
+            double xm = 0.5 * (x0 + x2);
+            double ym = computeObjectiveValue(xm);
+            if (FastMath.signum(y0) + FastMath.signum(ym) == 0.0) {
+                x2 = xm; y2 = ym;
             } else {
-                double xm = 0.5 * (x0 + x2);
-                double ym = computeObjectiveValue(xm);
-                if (FastMath.signum(y0) + FastMath.signum(ym) == 0.0) {
-                    x2 = xm; y2 = ym;
-                } else {
-                    x0 = xm; y0 = ym;
-                }
-                x1 = 0.5 * (x0 + x2);
-                y1 = computeObjectiveValue(x1);
-                oldx = Double.POSITIVE_INFINITY;
+                x0 = xm; y0 = ym;
             }
         }
     }

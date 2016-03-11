@@ -20,6 +20,7 @@ import org.apache.commons.math4.analysis.QuinticFunction;
 import org.apache.commons.math4.analysis.UnivariateFunction;
 import org.apache.commons.math4.analysis.function.Expm1;
 import org.apache.commons.math4.analysis.function.Sin;
+import org.apache.commons.math4.analysis.polynomials.PolynomialFunction;
 import org.apache.commons.math4.analysis.solvers.MullerSolver2;
 import org.apache.commons.math4.analysis.solvers.UnivariateSolver;
 import org.apache.commons.math4.exception.NoBracketingException;
@@ -170,9 +171,37 @@ public final class MullerSolver2Test {
         final double min = 20;
         final double max = 107.27001423177079;
         final double start = 100d / 3;
-        final double result = solver.solve(1000, logFunction, min, max, start);
+        final double result = solver.solve(100, logFunction, min, max, start);
 
         Assert.assertTrue(result + " < " + min, result >= min);
         Assert.assertTrue(result + " > " + max, result <= max);
+    }
+    
+    @Test
+    public void testLineFunction() {
+        UnivariateFunction f = new PolynomialFunction(new double[]{-1, 1});
+        UnivariateSolver solver = new MullerSolver2();
+        
+        double min, max, expected, result, tolerance;
+
+        min = -0.4; max = 1.2; expected = 1.0;
+        tolerance = FastMath.max(solver.getAbsoluteAccuracy(),
+                    FastMath.abs(expected * solver.getRelativeAccuracy()));
+        result = solver.solve(100, f, min, max);
+        Assert.assertEquals(expected, result, tolerance);
+    }
+    
+    @Test
+    public void testCubicFunction() {
+        UnivariateFunction f = new PolynomialFunction(new double[]{-1, 2, 2, -3});
+        UnivariateSolver solver = new MullerSolver2();
+        
+        double min, max, expected, result, tolerance;
+
+        min = -0.7; max = 0.98; expected = 0.43425854591066493;
+        tolerance = FastMath.max(solver.getAbsoluteAccuracy(),
+                    FastMath.abs(expected * solver.getRelativeAccuracy()));
+        result = solver.solve(100, f, min, max);
+        Assert.assertEquals(expected, result, tolerance);
     }
 }

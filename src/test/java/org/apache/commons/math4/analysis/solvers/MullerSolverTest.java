@@ -20,6 +20,7 @@ import org.apache.commons.math4.analysis.QuinticFunction;
 import org.apache.commons.math4.analysis.UnivariateFunction;
 import org.apache.commons.math4.analysis.function.Expm1;
 import org.apache.commons.math4.analysis.function.Sin;
+import org.apache.commons.math4.analysis.polynomials.PolynomialFunction;
 import org.apache.commons.math4.analysis.solvers.MullerSolver;
 import org.apache.commons.math4.analysis.solvers.UnivariateSolver;
 import org.apache.commons.math4.exception.NoBracketingException;
@@ -171,12 +172,46 @@ public final class MullerSolverTest {
             };
 
         final UnivariateSolver solver = new MullerSolver(0.25);
-        final double min = 20;
-        final double max = 100.04173804515072;
-        final double start = 100d / 3;
-        final double result = solver.solve(1000, logFunction, min, max, start);
+        double min, max, start, expected, result, tolerance;
+        
+        min = 20; max = 100.04173804515072; expected = max; start = 100d / 3;
+        tolerance = FastMath.max(solver.getAbsoluteAccuracy(),
+                    FastMath.abs(expected * solver.getRelativeAccuracy()));
+        result = solver.solve(100, logFunction, min, max, start);
+        Assert.assertEquals(expected, result, tolerance);
+        
+        min = -1; max = 1e20; expected = 100.04173804515072;start = -0.1;
+        tolerance = FastMath.max(solver.getAbsoluteAccuracy(),
+                    FastMath.abs(expected * solver.getRelativeAccuracy()));
+        result = solver.solve(140, logFunction, min, max, start);
+        Assert.assertEquals(expected, result, tolerance);
+    }
+    
+    @Test
+    public void testLinearFunction() {
+        UnivariateFunction f = new PolynomialFunction(new double[]{-1, 1});
+        UnivariateSolver solver = new MullerSolver();
+        
+        double min, max, expected, result, tolerance;
 
-        Assert.assertTrue(result + " < " + min, result >= min);
-        Assert.assertTrue(result + " > " + max, result <= max);
+        min = -0.4; max = 1.2; expected = 1.0;
+        tolerance = FastMath.max(solver.getAbsoluteAccuracy(),
+                    FastMath.abs(expected * solver.getRelativeAccuracy()));
+        result = solver.solve(100, f, min, max);
+        Assert.assertEquals(expected, result, tolerance);
+    }
+    
+    @Test
+    public void testCubicFunction() {
+        UnivariateFunction f = new PolynomialFunction(new double[]{-1, 2, 2, -3});
+        UnivariateSolver solver = new MullerSolver();
+        
+        double min, max, expected, result, tolerance;
+
+        min = -0.7; max = 0.98; expected = 0.43425854591066493;
+        tolerance = FastMath.max(solver.getAbsoluteAccuracy(),
+                    FastMath.abs(expected * solver.getRelativeAccuracy()));
+        result = solver.solve(100, f, min, max);
+        Assert.assertEquals(expected, result, tolerance);
     }
 }
